@@ -114,7 +114,7 @@ app.put("/api/persons/:id", (req, res) => {
     return res.status(200).json(updatedPerson);
 });
 
-app.delete("api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", (req, res) => {
     const { id } = req.params;
 
     const foundPerson = db.find((p) => p.id === id);
