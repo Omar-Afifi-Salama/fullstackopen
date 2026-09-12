@@ -1,14 +1,11 @@
+require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
-let { db } = require("./data");
+
+const Person = require("./models/Person");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-function generateId() {
-    const max = Number.MAX_SAFE_INTEGER;
-    return String(Math.floor(Math.random() * max));
-}
 
 app.use(express.json());
 
@@ -24,37 +21,45 @@ app.use(
 
 app.use(express.static("dist"));
 
-app.get("/info", (req, res) => {
+app.get("/info", (req, res, next) => {
     const timeReceived = new Date();
 
-    return res
-        .status(200)
-        .send(
-            `<p>Phonebook has info for ${db.length} people.</p><p>${timeReceived}</p>`,
-        );
+    Person.find({})
+        .then((response) => {
+            return res
+                .status(200)
+                .send(
+                    `<p>Phonebook has info for ${response.length} people.</p><p>${timeReceived}</p>`,
+                );
+        })
+        .catch((error) => next(error));
 });
 
-app.get("/api/persons", (req, res) => {
-    return res.status(200).json(db);
+app.get("/api/persons", (req, res, next) => {
+    Person.find({})
+        .then((response) => {
+            return res.status(200).json(response);
+        })
+        .catch((error) => next(error));
 });
 
-app.get("/api/persons/:id", (req, res) => {
+app.get("/api/persons/:id", (req, res, next) => {
     const { id } = req.params;
 
-    const foundPerson = db.find((p) => p.id === id);
+    Person.findById(id)
+        .then((response) => {
+            if (!response) {
+                return res
+                    .status(404)
+                    .send(`<p>Person with id [${id}] not found.</p>`);
+            }
 
-    if (!foundPerson) {
-        return res.status(404).send(`<p>Person with id [${id}] not found.</p>`);
-    }
-
-    return res
-        .status(200)
-        .send(
-            `<h1>${foundPerson.name}</h1><p>Id: ${foundPerson.id}</p><p>Phone Number: ${foundPerson.number}</p>`,
-        );
+            return res.status(200).json(response);
+        })
+        .catch((error) => next(error));
 });
 
-app.post("/api/persons", (req, res) => {
+app.post("/api/persons", (req, res, next) => {
     if (!req.body) {
         return res.status(400).send("Request body is missing");
     }
@@ -69,28 +74,28 @@ app.post("/api/persons", (req, res) => {
             );
     }
 
-    if (db.find((p) => p.name === name)) {
-        return res
-            .status(400)
-            .send(`Name [${name}] already exists in phonebook.`);
-    }
+    Person.findOne({ name })
+        .then((response) => {
+            if (response) {
+                return res
+                    .status(400)
+                    .send(`Name [${name}] already exists in phonebook.`);
+            }
 
-    const id = generateId();
+            const newPerson = new Person({ name, number });
 
-    const newPerson = { id, name, number };
-
-    db.push(newPerson);
-
-    return res.status(201).json(newPerson);
+            newPerson
+                .save()
+                .then((response) => {
+                    return res.status(201).json(response);
+                })
+                .catch((error) => next(error));
+        })
+        .catch((error) => next(error));
 });
 
-app.put("/api/persons/:id", (req, res) => {
+app.put("/api/persons/:id", (req, res, next) => {
     const { id } = req.params;
-
-    const foundPerson = db.find((p) => p.id === id);
-    if (!foundPerson) {
-        return res.status(404).send(`<p>Person with id [${id}] not found.</p>`);
-    }
 
     const { name, number } = req.body;
 
@@ -102,29 +107,56 @@ app.put("/api/persons/:id", (req, res) => {
             );
     }
 
-    const updatedPerson = {
-        ...foundPerson,
-        name,
-        number,
-        id,
-    };
+    Person.findById(id)
+        .then((person) => {
+            if (!person) {
+                return res
+                    .status(404)
+                    .send(`<p>Person with id [${id}] not found.</p>`);
+            }
 
-    db = db.map((p) => (p.id === id ? updatedPerson : p));
+            person.name = name;
+            person.number = number;
 
-    return res.status(200).json(updatedPerson);
+            person
+                .save()
+                .then((response) => {
+                    return res.status(200).json(response);
+                })
+                .catch((error) => next(error));
+        })
+        .catch((error) => next(error));
 });
 
-app.delete("/api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", (req, res, next) => {
     const { id } = req.params;
 
-    const foundPerson = db.find((p) => p.id === id);
-    if (!foundPerson) {
-        return res.status(404).send(`<p>Person with id [${id}] not found.</p>`);
+    Person.findByIdAndDelete(id)
+        .then((response) => {
+            if (!response) {
+                return res
+                    .status(404)
+                    .send(`<p>Person with id [${id}] not found.</p>`);
+            }
+
+            return res.status(204).end();
+        })
+        .catch((error) => next(error));
+});
+
+function errorHandler(error, req, res) {
+    if (error.name === "CastError") {
+        return res.status(400).json({ error: "Mal-formatted id" });
     }
 
-    db = db.filter((p) => p.id !== id);
+    if (error.name === "ValidationError") {
+        return res.status(400).json({ error: error.message });
+    }
 
-    return res.status(200).end();
-});
+    console.error(error);
+    return res.status(500).json({ error: "Internal server error" });
+}
+
+app.use(errorHandler);
 
 app.listen(3000, () => console.log(`[Listening on port ${PORT}]`));

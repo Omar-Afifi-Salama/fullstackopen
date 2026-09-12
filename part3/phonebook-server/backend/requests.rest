@@ -4,23 +4,23 @@ GET http://localhost:3000/info
 GET http://localhost:3000/api/persons
 
 ###
-GET http://localhost:3000/api/persons/3
+GET http://localhost:3000/api/persons/6aa56548a4d71b6a023dd81f
 
 ###
-POST http://localhost:3000/api/persons
+POST http://localhost:3000/api/persons/
 Content-Type: application/json
 
 {
-    "name": "abcd",
+    "name": "abcdez",
     "number": "123"
 }
 
 ###
-PUT http://localhost:3000/api/persons/3
+PUT http://localhost:3000/api/persons/6aa56548a4d71b6a023dd81f
 Content-Type: application/json
 
 {
-    "name": "abcde",
+    "name": "abcd",
     "number": "123"
 }
 

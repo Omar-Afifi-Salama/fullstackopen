@@ -47,10 +47,16 @@ export default function App() {
                 })
                 .catch((error) => {
                     console.error(error);
-                    showNotification(
-                        `Failed to add ${contactObj.name}`,
-                        "error",
-                    );
+
+                    if (error.response.data.error) {
+                        showNotification(error.response.data.error, "error");
+                    } else {
+                        showNotification(
+                            `Failed to add ${contactObj.name}`,
+                            "error",
+                        );
+                    }
+
                     return false;
                 });
         }
@@ -61,7 +67,7 @@ export default function App() {
 
         if (!consentToUpdate) return false;
 
-        numbersApi
+        return numbersApi
             .update(foundPerson.id, {
                 ...contactObj,
                 id: foundPerson.id,
@@ -90,10 +96,14 @@ export default function App() {
                         prev.filter((p) => p.id !== foundPerson.id),
                     );
                 } else {
-                    showNotification(
-                        `Failed to update ${contactObj.name}`,
-                        "error",
-                    );
+                    if (error.response.data.error) {
+                        showNotification(error.response.data.error, "error");
+                    } else {
+                        showNotification(
+                            `Failed to update ${contactObj.name}`,
+                            "error",
+                        );
+                    }
                 }
                 return false;
             });
