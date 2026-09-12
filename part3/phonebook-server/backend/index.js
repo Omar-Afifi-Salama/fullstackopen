@@ -144,7 +144,7 @@ app.delete("/api/persons/:id", (req, res, next) => {
         .catch((error) => next(error));
 });
 
-function errorHandler(error, req, res) {
+function errorHandler(error, req, res, next) {
     if (error.name === "CastError") {
         return res.status(400).json({ error: "Mal-formatted id" });
     }
@@ -154,7 +154,7 @@ function errorHandler(error, req, res) {
     }
 
     console.error(error);
-    return res.status(500).json({ error: "Internal server error" });
+    next(error);
 }
 
 app.use(errorHandler);
